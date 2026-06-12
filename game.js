@@ -287,8 +287,8 @@ const S = {
   floorKills: 0, floorNeeded: 10, spawned: 0,
   keys: 0, hits: 0, playT: 0,
   best: +(localStorage.getItem('tr_best') || 0),
-  mods: { speedMul: 1, scoreMul: 1, crit: 0.05, shieldMax: 0, bomb: false, leech: 0, knock: false, freeze: false },
-  relics: [], shield: 0,
+  mods: { speedMul: 1, scoreMul: 1, crit: 0.05, shieldMax: 0, bomb: false, leech: 0, knock: false, freeze: 0 },
+  relics: [], shield: 0, ffwd: false,
   freezeT: 0, timeScale: 1, shake: 0, flash: 0, flashCol: '255,255,255',
   target: null, spawnT: 1.2, minionT: 0, boss: null,
   glowT: 0,
@@ -411,7 +411,7 @@ function killEnemy(e, chained) {
 
   // relic effects
   if (S.mods.leech) { S.hp = Math.min(S.maxhp, S.hp + S.mods.leech); hpHud(); }
-  if (S.mods.freeze) S.freezeT = Math.max(S.freezeT, 0.4);
+  if (S.mods.freeze) S.freezeT = Math.max(S.freezeT, S.mods.freeze);
   if (S.mods.knock) {
     for (const o of enemies) {
       const d = Math.hypot(o.x - e.x, o.y - e.y);
@@ -547,6 +547,11 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (S.phase !== 'play' || S.paused) return;
+  if (e.key === ' ') {
+    e.preventDefault();
+    S.ffwd = true;
+    return;
+  }
   if (/^[a-z-]$/.test(k)) {
     e.preventDefault();
     if (e.repeat) return;
@@ -554,12 +559,18 @@ window.addEventListener('keydown', e => {
   }
 });
 
+window.addEventListener('keyup', e => {
+  if (e.key === ' ') S.ffwd = false;
+});
+
 window.addEventListener('blur', () => {
+  S.ffwd = false;
   if (S.phase === 'play' && !S.paused) togglePause();
 });
 
 function togglePause() {
   S.paused = !S.paused;
+  S.ffwd = false;
   $('pause-screen').classList.toggle('hidden', !S.paused);
 }
 
@@ -583,15 +594,17 @@ const RELICS = [
     apply() { S.mods.knock = true; } },
   { id: 'gold',   icon: '💰', name: 'スコアブースター', desc: '獲得スコア+30%',
     apply() { S.mods.scoreMul *= 1.3; } },
-  { id: 'freeze', icon: '❄️', name: '残響フリーズ', desc: '撃破するたび0.4秒間、敵がスローになる',
-    apply() { S.mods.freeze = true; } },
+  { id: 'freeze', icon: '❄️', name: '残響フリーズ', desc: '撃破するたび0.4秒間、敵がスローになる（重複で+0.4秒）',
+    apply() { S.mods.freeze += 0.4; } },
 ];
 
 function showRelics() {
   S.phase = 'relic';
   const cards = $('relic-cards');
   cards.innerHTML = '';
-  const pool = [...RELICS];
+  // boolean relics don't stack — hide them once owned
+  const owned = new Set(S.relics.map(r => r.id));
+  const pool = RELICS.filter(r => !(owned.has(r.id) && (r.id === 'bomb' || r.id === 'knock')));
   for (let i = 0; i < 3 && pool.length; i++) {
     const r = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
     const div = document.createElement('div');
@@ -661,8 +674,8 @@ function startRun() {
   S.hp = 100; S.maxhp = 100;
   S.combo = 0; S.maxCombo = 0; S.kills = 0;
   S.keys = 0; S.hits = 0; S.playT = 0;
-  S.mods = { speedMul: 1, scoreMul: 1, crit: 0.05, shieldMax: 0, bomb: false, leech: 0, knock: false, freeze: false };
-  S.relics = []; S.shield = 0;
+  S.mods = { speedMul: 1, scoreMul: 1, crit: 0.05, shieldMax: 0, bomb: false, leech: 0, knock: false, freeze: 0 };
+  S.relics = []; S.shield = 0; S.ffwd = false;
   S.freezeT = 0; S.timeScale = 1; S.shake = 0; S.flash = 0;
   S.target = null; S.boss = null;
   enemies = []; particles = []; rings = []; beams = []; floaters = [];
@@ -752,7 +765,7 @@ function update(dt) {
   S.freezeT = Math.max(0, S.freezeT - dt);
   S.glowT += dt;
 
-  const wdt = dt * S.timeScale;
+  const wdt = dt * S.timeScale * (S.ffwd && S.phase === 'play' ? 3 : 1);
   const enemySlow = S.freezeT > 0 ? 0.25 : 1;
 
   if (S.phase === 'play') {
@@ -1079,6 +1092,16 @@ function render(t) {
   if (S.freezeT > 0) {
     ctx.fillStyle = `rgba(120,200,255,${S.freezeT * 0.12})`;
     ctx.fillRect(0, 0, W, H);
+  }
+  // fast-forward indicator
+  if (S.ffwd && S.phase === 'play') {
+    ctx.textAlign = 'center';
+    ctx.font = '700 22px Orbitron, monospace';
+    ctx.fillStyle = `rgba(75,232,255,${0.6 + Math.sin(t * 10) * 0.3})`;
+    ctx.shadowColor = 'rgba(75,232,255,.8)';
+    ctx.shadowBlur = 12;
+    ctx.fillText('▶▶ ×3', W / 2, H - 26);
+    ctx.shadowBlur = 0;
   }
 }
 
