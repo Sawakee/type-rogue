@@ -603,21 +603,35 @@ function hurtCore(dmg) {
 }
 
 /* ================= input ================= */
+// k が「次に打つべき文字」に一致する敵を探す（打ちかけの敵は続きから判定）
+function findMatch(k, exclude) {
+  const matches = enemies.filter(e => e !== exclude
+    && e.cands.some(c => c.length > e.typed.length && c[e.typed.length] === k));
+  if (!matches.length) return null;
+  matches.sort((a, b) => distCore(a) - distCore(b));
+  return matches[0];
+}
+
 function handleKey(k) {
   S.keys++;
   let t = S.target;
   if (t && !enemies.includes(t)) { S.target = null; t = null; }
   if (t) {
     const nc = t.cands.filter(c => c.startsWith(t.typed + k));
-    if (nc.length) correctKey(t, k, nc);
-    else { S.keys--; miss(); }
+    if (nc.length) { correctKey(t, k, nc); return; }
+    // 現在のターゲットに合わなければ、他の敵へ乗り換え（進行は保持）
+    const sw = findMatch(k, t);
+    if (sw) {
+      S.target = sw;
+      correctKey(sw, k, sw.cands.filter(c => c[sw.typed.length] === k));
+      return;
+    }
+    S.keys--; miss();
   } else {
-    const matches = enemies.filter(e => e.cands.some(c => c[0] === k));
-    if (matches.length) {
-      matches.sort((a, b) => distCore(a) - distCore(b));
-      const e = matches[0];
+    const e = findMatch(k, null);
+    if (e) {
       S.target = e;
-      correctKey(e, k, e.cands.filter(c => c[0] === k));
+      correctKey(e, k, e.cands.filter(c => c[e.typed.length] === k));
     } else if (enemies.length) { S.keys--; miss(); }
   }
 }
