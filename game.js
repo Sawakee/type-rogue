@@ -227,31 +227,89 @@ const RAW_WORDS = [
   ['風林火山', 'ふうりんかざん'],
 ];
 
-const WORDS = { 1: [], 2: [], 3: [] };
-for (const [d, k] of RAW_WORDS) {
-  const n = kanaUnits(k).length;
-  const tier = n <= 3 ? 1 : n <= 5 ? 2 : 3;
-  WORDS[tier].push({ d, k, n });
+/* ---- 語彙パーツ：組み合わせで数十万通りの単語・文章をレベル別に生成 ---- */
+/*WORDS-START*/
+const ADJS = [
+  ['赤い', 'あかい'], ['青い', 'あおい'], ['白い', 'しろい'], ['黒い', 'くろい'],
+  ['光る', 'ひかる'], ['燃える', 'もえる'], ['凍る', 'こおる'], ['輝く', 'かがやく'],
+  ['小さな', 'ちいさな'], ['大きな', 'おおきな'], ['強い', 'つよい'], ['弱い', 'よわい'],
+  ['速い', 'はやい'], ['遅い', 'おそい'], ['熱い', 'あつい'], ['冷たい', 'つめたい'],
+  ['甘い', 'あまい'], ['古い', 'ふるい'], ['新しい', 'あたらしい'], ['美しい', 'うつくしい'],
+  ['恐ろしい', 'おそろしい'], ['静かな', 'しずかな'], ['荒ぶる', 'あらぶる'], ['眠れる', 'ねむれる'],
+  ['彷徨う', 'さまよう'], ['古の', 'いにしえの'], ['永遠の', 'えいえんの'], ['神秘の', 'しんぴの'],
+  ['金色の', 'きんいろの'], ['銀色の', 'ぎんいろの'], ['闇の', 'やみの'], ['炎の', 'ほのおの'],
+  ['氷の', 'こおりの'], ['雷の', 'いかずちの'], ['幻の', 'まぼろしの'], ['伝説の', 'でんせつの'],
+];
+const VERBS = [
+  ['倒せ', 'たおせ'], ['守れ', 'まもれ'], ['探せ', 'さがせ'], ['撃て', 'うて'],
+  ['斬れ', 'きれ'], ['走れ', 'はしれ'], ['跳べ', 'とべ'], ['掴め', 'つかめ'],
+  ['放て', 'はなて'], ['消せ', 'けせ'], ['壊せ', 'こわせ'], ['集めろ', 'あつめろ'],
+  ['解き放て', 'ときはなて'], ['撃ち落とせ', 'うちおとせ'], ['吹っ飛ばせ', 'ぶっとばせ'],
+  ['呼び覚ませ', 'よびさませ'], ['貫け', 'つらぬけ'], ['駆け抜けろ', 'かけぬけろ'],
+  ['封じ込めろ', 'ふうじこめろ'], ['召喚せよ', 'しょうかんせよ'], ['破壊せよ', 'はかいせよ'],
+  ['解放せよ', 'かいほうせよ'], ['制圧せよ', 'せいあつせよ'], ['乗り越えろ', 'のりこえろ'],
+];
+// レベルごとの目標かな数（ユニット数）
+const LEVEL_RANGE = [[2, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 9], [10, 11], [12, 13], [14, 16], [17, 28]];
+
+function joinW(parts) {
+  let d = '', k = '';
+  for (const p of parts) { d += p[0]; k += p[1]; }
+  return { d, k, n: kanaUnits(k).length };
 }
 
-function rollTier(floor) {
+function makeCandidate(level) {
   const r = Math.random();
-  if (floor <= 2) return r < 0.55 ? 1 : 2;
-  if (floor <= 5) return r < 0.4 ? 1 : r < 0.95 ? 2 : 3;
-  if (floor <= 9) return r < 0.2 ? 1 : r < 0.82 ? 2 : 3;
-  return r < 0.1 ? 1 : r < 0.65 ? 2 : 3;
+  const N = () => pick(RAW_WORDS), A = () => pick(ADJS), V = () => pick(VERBS);
+  const WO = ['を', 'を'], NO = ['の', 'の'], TO = ['と', 'と'];
+  if (level <= 2) return joinW([N()]);
+  if (level <= 3) return r < 0.7 ? joinW([N()]) : joinW([A(), N()]);
+  if (level <= 5) {
+    if (r < 0.45) return joinW([A(), N()]);
+    if (r < 0.8) return joinW([N(), NO, N()]);
+    return joinW([N()]);
+  }
+  if (level <= 7) {
+    if (r < 0.45) return joinW([N(), WO, V()]);
+    if (r < 0.75) return joinW([A(), N(), WO, V()]);
+    return joinW([A(), N(), NO, N()]);
+  }
+  if (level <= 9) {
+    if (r < 0.4) return joinW([A(), N(), WO, V()]);
+    if (r < 0.7) return joinW([N(), TO, N(), WO, V()]);
+    return joinW([A(), N(), NO, N(), WO, V()]);
+  }
+  return r < 0.5
+    ? joinW([A(), N(), NO, N(), WO, V()])
+    : joinW([A(), N(), TO, A(), N(), WO, V()]);
 }
 
-function pickWord(tier, avoidLetters, avoidWords) {
-  const pool = WORDS[tier];
-  for (let i = 0; i < 14; i++) {
-    const w = pick(pool);
-    if (avoidWords.has(w.k)) continue;
-    const first = romanize(w.k)[0][0];
-    if (avoidLetters.has(first) && i < 10) continue;
-    return w;
+function genWord(level) {
+  level = clamp(level, 1, 10);
+  const [lo, hi] = LEVEL_RANGE[level - 1];
+  let w = makeCandidate(level);
+  for (let i = 0; i < 40 && (w.n < lo || w.n > hi); i++) w = makeCandidate(level);
+  return w;
+}
+/*WORDS-END*/
+
+// 現在の実効フロアから出題レベル(1-10)を決める
+function wordLevel() {
+  const base = clamp(Math.ceil(eff() * 0.5), 1, 10) + ((S.stage && S.stage.mods.level) || 0);
+  const jitter = Math.random() < 0.3 ? (Math.random() < 0.5 ? -1 : 1) : 0;
+  return clamp(base + jitter, 1, 10);
+}
+
+function pickWord(level, avoidLetters, avoidWords) {
+  let w = genWord(level);
+  for (let i = 0; i < 12; i++) {
+    if (!avoidWords.has(w.k)) {
+      const first = romanize(w.k)[0][0];
+      if (!avoidLetters.has(first) || i >= 8) return w;
+    }
+    w = genWord(level);
   }
-  return pick(pool);
+  return w;
 }
 
 /* ================= canvas ================= */
@@ -280,8 +338,9 @@ for (let i = 0; i < 5; i++) {
 
 /* ================= state ================= */
 const S = {
-  phase: 'title', // title | play | clear | relic | over
+  phase: 'title', // title | world | play | clear | relic | over | won
   paused: false,
+  stage: null, missBoostT: 0,
   floor: 1, score: 0, hp: 100, maxhp: 100,
   combo: 0, maxCombo: 0, kills: 0,
   floorKills: 0, floorNeeded: 10, spawned: 0,
@@ -298,6 +357,48 @@ let enemies = [], particles = [], rings = [], beams = [], floaters = [];
 const coreX = () => W / 2;
 const coreY = () => H - 92;
 const distCore = e => Math.hypot(e.x - coreX(), e.y - coreY());
+
+/* ================= world map ================= */
+const MAPNODES = [
+  { id: 's1', x: 0.14, y: 0.66, icon: '🌿', name: 'はじまりの草原', hue: 130, len: 5, offset: 0,
+    desc: 'そよ風わたる草原。短い単語で腕ならし。', mods: {} },
+  { id: 's2', x: 0.30, y: 0.50, icon: '🌲', name: '翠の森', hue: 160, len: 5, offset: 2,
+    desc: '深き森。すこし長い言葉が絡みつく。', mods: { level: 1 } },
+  { id: 's3', x: 0.27, y: 0.26, icon: '🌋', name: '紅蓮火山', hue: 20, len: 5, offset: 4,
+    desc: '敵の速度+15%。手を止めるな。', mods: { speed: 1.15 } },
+  { id: 's4', x: 0.50, y: 0.60, icon: '❄️', name: '氷晶洞窟', hue: 200, len: 5, offset: 4,
+    desc: '敵がゆっくり、しかし群れで押し寄せる。', mods: { spawn: 0.72, speed: 0.92 } },
+  { id: 's5', x: 0.53, y: 0.30, icon: '⛈️', name: '雷雲の塔', hue: 265, len: 6, offset: 7,
+    desc: '敵が2体同時に出現することがある。', mods: { burst: true } },
+  { id: 's6', x: 0.72, y: 0.44, icon: '🏰', name: '終焉の魔王城', hue: 330, len: 7, offset: 10,
+    desc: '長文・高速・物量。最終決戦。', mods: { speed: 1.1, level: 1, bossWords: 2 } },
+  { id: 's7', x: 0.85, y: 0.18, icon: '🌌', name: '虚空回廊（ENDLESS）', hue: 230, len: Infinity, offset: 5,
+    desc: '果てなき回廊。5フロアごとにボス。どこまで行ける？', mods: {} },
+];
+const MAPEDGES = [['s1', 's2'], ['s2', 's3'], ['s2', 's4'], ['s3', 's5'], ['s4', 's5'], ['s5', 's6'], ['s6', 's7']];
+const nodeById = {};
+for (const n of MAPNODES) nodeById[n.id] = n;
+function neighborsOf(id) {
+  const r = [];
+  for (const [a, b] of MAPEDGES) { if (a === id) r.push(b); if (b === id) r.push(a); }
+  return r;
+}
+
+let progress;
+try { progress = JSON.parse(localStorage.getItem('tr_progress')); } catch (err) { progress = null; }
+if (!progress || !Array.isArray(progress.cleared)) progress = { cleared: [], best: {}, node: 's1' };
+function saveProgress() { localStorage.setItem('tr_progress', JSON.stringify(progress)); }
+function isUnlocked(id) {
+  if (id === 's1') return true;
+  return MAPEDGES.some(([a, b]) =>
+    (a === id && progress.cleared.includes(b)) || (b === id && progress.cleared.includes(a)));
+}
+
+const avatar = { node: 's1', moving: null, trailT: 0 };
+if (nodeById[progress.node] && isUnlocked(progress.node)) avatar.node = progress.node;
+
+// 実効フロア = ステージ難易度オフセット + 現在フロア
+const eff = () => S.floor + (S.stage ? S.stage.offset : 0);
 
 /* ================= fx ================= */
 function burst(x, y, hue, n, power, white) {
@@ -338,15 +439,17 @@ function activeWords() {
   return set;
 }
 
-function spawnEnemy(forceTier) {
-  const tier = forceTier || rollTier(S.floor);
-  const w = pickWord(tier, activeFirstLetters(), activeWords());
-  const speed = (58 + S.floor * 6) * rand(0.85, 1.2)
-    * (tier === 3 ? 0.66 : tier === 2 ? 0.85 : 1.05) * S.mods.speedMul;
+function spawnEnemy(forceLevel) {
+  const level = forceLevel || wordLevel();
+  const w = pickWord(level, activeFirstLetters(), activeWords());
+  const tier = level <= 3 ? 1 : level <= 6 ? 2 : 3;
+  const speed = (58 + eff() * 6) * rand(0.85, 1.2)
+    * (tier === 3 ? 0.6 : tier === 2 ? 0.82 : 1.05)
+    * S.mods.speedMul * (S.stage.mods.speed || 1);
   enemies.push({
     x: rand(80, W - 80), y: -46,
     word: w, cands: romanize(w.k), typed: '',
-    r: 15 + tier * 6 + w.n * 1.1, tier, speed,
+    r: 15 + tier * 6 + Math.min(w.n, 10) * 1.2, tier, speed,
     wob: rand(0, TAU), hue: [190, 315, 26][tier - 1] + rand(-14, 14),
     kvx: 0, kvy: 0, boss: false, alive: true,
   });
@@ -354,12 +457,12 @@ function spawnEnemy(forceTier) {
 }
 
 function spawnBoss() {
-  const count = 4 + Math.floor(S.floor / 5) * 2;
+  const count = 4 + Math.floor(eff() / 5) * 2 + (S.stage.mods.bossWords || 0);
   const queue = [];
   const used = new Set();
+  const baseLv = clamp(Math.ceil(eff() * 0.5) + 2, 3, 10);
   for (let i = 0; i < count; i++) {
-    const tier = i < count / 2 ? 2 : 3;
-    const w = pickWord(tier, new Set(), used);
+    const w = pickWord(clamp(baseLv + (i % 2), 1, 10), new Set(), used);
     used.add(w.k);
     queue.push(w);
   }
@@ -367,7 +470,7 @@ function spawnBoss() {
   const boss = {
     x: W / 2, y: -110,
     word: w, cands: romanize(w.k), typed: '',
-    r: 64, tier: 3, speed: (13 + S.floor * 0.7) * S.mods.speedMul,
+    r: 64, tier: 3, speed: (13 + eff() * 0.7) * S.mods.speedMul * (S.stage.mods.speed || 1),
     wob: 0, hue: 350, kvx: 0, kvy: 0,
     boss: true, alive: true, queue, total: count, done: 0,
   };
@@ -388,7 +491,9 @@ function killEnemy(e, chained) {
 
   S.combo++; S.maxCombo = Math.max(S.maxCombo, S.combo);
   const crit = Math.random() < S.mods.crit;
-  let gain = Math.round((e.word.n * 15 + S.floor * 5) * comboMult() * S.mods.scoreMul * (crit ? 2 : 1) * (chained ? 0.5 : 1));
+  // スペース早送り中はリスクの分スコア1.5倍
+  let gain = Math.round((e.word.n * 15 + eff() * 5) * comboMult() * S.mods.scoreMul
+    * (crit ? 2 : 1) * (chained ? 0.5 : 1) * (S.ffwd ? 1.5 : 1));
   S.score += gain;
 
   // FX
@@ -453,7 +558,6 @@ function bossWordDone(boss) {
     enemies.push(boss);
     const w = boss.queue.shift();
     boss.word = w; boss.cands = romanize(w.k); boss.typed = '';
-    boss.y = Math.max(60, boss.y - 130);
     bossHud();
   } else {
     // boss dead
@@ -465,7 +569,7 @@ function bossWordDone(boss) {
     ring(boss.x, boss.y, 40, 800, 6);
     shake(26); flash(0.35, '255,120,140'); hitstop(0.03);
     floater(boss.x, boss.y, 'BOSS DOWN!!', '#ff5d7a', 40);
-    S.score += 500 * S.floor * S.mods.scoreMul | 0;
+    S.score += 500 * eff() * S.mods.scoreMul | 0;
     scoreHud();
     checkFloorClear(true);
   }
@@ -481,6 +585,9 @@ function miss() {
   }
   S.combo = 0;
   comboHud(false);
+  // ミスペナルティ：1.2秒間、敵全体が加速する
+  S.missBoostT = 1.2;
+  floater(coreX(), coreY() - 116, '⚠ 敵加速!', '#ff7b6b', 16);
   shake(7); flash(0.08, '255,80,80');
   sfx.miss();
 }
@@ -534,12 +641,35 @@ window.addEventListener('keydown', e => {
   if (S.phase === 'title') {
     if (e.key.length === 1 || e.key === 'Enter') {
       e.preventDefault();
-      startRun();
+      goWorld();
     }
     return;
   }
-  if (S.phase === 'over') {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startRun(); }
+  if (S.phase === 'world') {
+    const dirs = {
+      arrowup: [0, -1], arrowdown: [0, 1], arrowleft: [-1, 0], arrowright: [1, 0],
+      w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
+    };
+    if (dirs[k]) { e.preventDefault(); tryMove(dirs[k][0], dirs[k][1]); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enterStage(); }
+    return;
+  }
+  if (S.phase === 'relic') {
+    if (!relicChoices.length) return;
+    if (k === 'arrowleft' || k === 'a') {
+      relicSel = (relicSel + relicChoices.length - 1) % relicChoices.length;
+      paintRelicSel(); sfx.type();
+    } else if (k === 'arrowright' || k === 'd') {
+      relicSel = (relicSel + 1) % relicChoices.length;
+      paintRelicSel(); sfx.type();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      selectRelic(relicChoices[relicSel]);
+    }
+    e.preventDefault();
+    return;
+  }
+  if (S.phase === 'over' || S.phase === 'won') {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goWorld(); }
     return;
   }
   if (e.key === 'Escape' && (S.phase === 'play')) {
@@ -598,24 +728,36 @@ const RELICS = [
     apply() { S.mods.freeze += 0.4; } },
 ];
 
+let relicChoices = [], relicSel = 0;
+
 function showRelics() {
   S.phase = 'relic';
   const cards = $('relic-cards');
   cards.innerHTML = '';
   // boolean relics don't stack — hide them once owned
-  const owned = new Set(S.relics.map(r => r.id));
-  const pool = RELICS.filter(r => !(owned.has(r.id) && (r.id === 'bomb' || r.id === 'knock')));
+  const ownedCount = {};
+  for (const r of S.relics) ownedCount[r.id] = (ownedCount[r.id] || 0) + 1;
+  const pool = RELICS.filter(r => !(ownedCount[r.id] && (r.id === 'bomb' || r.id === 'knock')));
+  relicChoices = []; relicSel = 0;
   for (let i = 0; i < 3 && pool.length; i++) {
     const r = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    relicChoices.push(r);
     const div = document.createElement('div');
     div.className = 'relic-card';
     div.innerHTML = `<div class="relic-icon">${r.icon}</div>
       <div class="relic-name">${r.name}</div>
-      <div class="relic-desc">${r.desc}</div>`;
+      <div class="relic-desc">${r.desc}</div>
+      ${ownedCount[r.id] ? `<div class="relic-owned">所持 ×${ownedCount[r.id]}</div>` : ''}`;
     div.onclick = () => selectRelic(r);
+    div.onmouseenter = () => { relicSel = relicChoices.indexOf(r); paintRelicSel(); };
     cards.appendChild(div);
   }
+  paintRelicSel();
   $('relic-screen').classList.remove('hidden');
+}
+
+function paintRelicSel() {
+  [...$('relic-cards').children].forEach((c, i) => c.classList.toggle('sel', i === relicSel));
 }
 
 function selectRelic(r) {
@@ -628,22 +770,28 @@ function selectRelic(r) {
 }
 
 /* ================= floor flow ================= */
-function isBossFloor(f) { return f % 5 === 0; }
+function isBossFloor(f) {
+  if (S.stage && S.stage.len !== Infinity) return f === S.stage.len;
+  return f % 5 === 0;
+}
+const floorLabel = () =>
+  'FLOOR ' + S.floor + (S.stage && S.stage.len !== Infinity ? ' / ' + S.stage.len : '');
 
 function setupFloor() {
   S.floorKills = 0;
   S.spawned = 0;
-  S.floorNeeded = 8 + S.floor * 2;
+  S.floorNeeded = Math.min(24, Math.round(8 + eff() * 1.6));
   S.spawnT = 0.7;
   S.minionT = 0;
   S.shield = S.mods.shieldMax;
   S.target = null;
+  S.missBoostT = 0;
   floorHud();
   if (isBossFloor(S.floor)) {
-    banner('FLOOR ' + S.floor, '⚠ WARNING — BOSS APPROACHING ⚠', true);
+    banner(floorLabel(), '⚠ WARNING — BOSS APPROACHING ⚠', true);
     setTimeout(() => { if (S.phase === 'play') spawnBoss(); }, 1400);
   } else {
-    banner('FLOOR ' + S.floor, '敵を ' + S.floorNeeded + ' 体撃破せよ', false);
+    banner(floorLabel(), '敵を ' + S.floorNeeded + ' 体撃破せよ', false);
   }
 }
 
@@ -652,6 +800,7 @@ function checkFloorClear(bossDead) {
   if (isBossFloor(S.floor)) {
     if (!bossDead) return;
     enemies = []; S.target = null;
+    if (S.stage.len !== Infinity) { stageClear(); return; }
   } else {
     if (S.floorKills < S.floorNeeded || enemies.length) return;
   }
@@ -667,9 +816,11 @@ function nextFloor() {
   setupFloor();
 }
 
-function startRun() {
+function startRun(stage) {
+  S.stage = stage;
   S.phase = 'play';
   S.paused = false;
+  S.missBoostT = 0;
   S.floor = 1; S.score = 0;
   S.hp = 100; S.maxhp = 100;
   S.combo = 0; S.maxCombo = 0; S.kills = 0;
@@ -683,9 +834,23 @@ function startRun() {
   $('over-screen').classList.add('hidden');
   $('relic-screen').classList.add('hidden');
   $('bossbar-wrap').classList.add('hidden');
+  $('map-info').classList.add('hidden');
   $('hud').classList.remove('hidden');
   hpHud(); scoreHud(); comboHud(false); relicsHud();
   setupFloor();
+}
+
+function runStatsHtml(newBest) {
+  const acc = S.keys ? Math.round(S.hits / S.keys * 100) : 100;
+  const kpm = S.playT > 1 ? Math.round(S.hits / (S.playT / 60)) : 0;
+  return `<div>ステージ<span class="v">${S.stage.icon} ${S.stage.name}</span></div>
+     <div>SCORE<span class="v${newBest ? ' newbest' : ''}">${S.score.toLocaleString()}${newBest ? ' ★NEW BEST!' : ''}</span></div>
+     <div>BEST<span class="v">${S.best.toLocaleString()}</span></div>
+     <div>到達フロア<span class="v">${S.floor}${S.stage.len !== Infinity ? ' / ' + S.stage.len : ''}</span></div>
+     <div>撃破数<span class="v">${S.kills}</span></div>
+     <div>最大コンボ<span class="v">${S.maxCombo}</span></div>
+     <div>正確率<span class="v">${acc}%</span></div>
+     <div>打鍵速度<span class="v">${kpm} KPM</span></div>`;
 }
 
 function gameOver() {
@@ -696,19 +861,98 @@ function gameOver() {
   ring(coreX(), coreY(), 195, 900, 8);
   shake(28); flash(0.5, '255,60,90');
   sfx.over();
+  progress.best[S.stage.id] = Math.max(progress.best[S.stage.id] || 0, S.score);
+  saveProgress();
   const newBest = S.score > S.best;
   if (newBest) { S.best = S.score; localStorage.setItem('tr_best', S.best); }
-  const acc = S.keys ? Math.round(S.hits / S.keys * 100) : 100;
-  const kpm = S.playT > 1 ? Math.round(S.hits / (S.playT / 60)) : 0;
-  $('over-stats').innerHTML =
-    `<div>SCORE<span class="v${newBest ? ' newbest' : ''}">${S.score.toLocaleString()}${newBest ? ' ★NEW BEST!' : ''}</span></div>
-     <div>BEST<span class="v">${S.best.toLocaleString()}</span></div>
-     <div>到達フロア<span class="v">${S.floor}</span></div>
-     <div>撃破数<span class="v">${S.kills}</span></div>
-     <div>最大コンボ<span class="v">${S.maxCombo}</span></div>
-     <div>正確率<span class="v">${acc}%</span></div>
-     <div>打鍵速度<span class="v">${kpm} KPM</span></div>`;
+  $('over-title').textContent = 'GAME OVER';
+  $('over-title').classList.remove('win');
+  $('over-stats').innerHTML = runStatsHtml(newBest);
   setTimeout(() => $('over-screen').classList.remove('hidden'), 900);
+}
+
+function stageClear() {
+  S.phase = 'won';
+  S.boss = null;
+  $('bossbar-wrap').classList.add('hidden');
+  const st = S.stage;
+  if (!progress.cleared.includes(st.id)) progress.cleared.push(st.id);
+  progress.best[st.id] = Math.max(progress.best[st.id] || 0, S.score);
+  saveProgress();
+  const newBest = S.score > S.best;
+  if (newBest) { S.best = S.score; localStorage.setItem('tr_best', S.best); }
+  sfx.clear();
+  banner('STAGE CLEAR!!', st.name + ' 制覇！', false);
+  flash(0.25, '255,213,74');
+  $('over-title').textContent = 'STAGE CLEAR!!';
+  $('over-title').classList.add('win');
+  $('over-stats').innerHTML = runStatsHtml(newBest);
+  setTimeout(() => $('over-screen').classList.remove('hidden'), 1700);
+}
+
+/* ================= world map flow ================= */
+function goWorld() {
+  S.phase = 'world';
+  S.paused = false; S.boss = null; S.target = null; S.stage = null; S.ffwd = false;
+  enemies = []; beams = []; floaters = [];
+  S.shake = 0; S.timeScale = 1; S.missBoostT = 0; S.freezeT = 0;
+  ['title-screen', 'over-screen', 'relic-screen', 'pause-screen'].forEach(id => $(id).classList.add('hidden'));
+  $('bossbar-wrap').classList.add('hidden');
+  $('hud').classList.add('hidden');
+  $('map-info').classList.remove('hidden');
+  updateMapInfo();
+}
+
+function updateMapInfo() {
+  const n = nodeById[avatar.node];
+  const cleared = progress.cleared.includes(n.id);
+  $('mi-icon').textContent = n.icon;
+  $('mi-name').innerHTML = n.name + (cleared ? ' <span class="star">★ CLEAR</span>' : '');
+  $('mi-desc').textContent = n.desc + (n.len !== Infinity ? `（全${n.len}フロア）` : '');
+  $('mi-best').textContent = progress.best[n.id] ? 'BEST: ' + progress.best[n.id].toLocaleString() : '';
+  $('mi-action').innerHTML = '⏎ ENTER : 出撃<br>←↑↓→ : 移動';
+}
+
+function tryMove(dx, dy) {
+  if (avatar.moving) return;
+  const cur = nodeById[avatar.node];
+  let best = null, bestDot = 0.45;
+  for (const id of neighborsOf(cur.id)) {
+    const n = nodeById[id];
+    const vx = n.x - cur.x, vy = n.y - cur.y;
+    const len = Math.hypot(vx, vy) || 1;
+    const dot = (vx * dx + vy * dy) / len;
+    if (dot > bestDot) { best = n; bestDot = dot; }
+  }
+  if (!best) return;
+  if (!isUnlocked(best.id)) {
+    floater(best.x * W, best.y * H - 50, '🔒 となりをクリアして解放', '#9fb3c8', 16);
+    sfx.miss();
+    return;
+  }
+  avatar.moving = { from: cur, to: best, t: 0, dur: 0.4 };
+  sfx.type();
+}
+
+function enterStage() {
+  if (avatar.moving) return;
+  sfx.relic();
+  startRun(nodeById[avatar.node]);
+}
+
+function avatarPos(t) {
+  let x, y;
+  if (avatar.moving) {
+    const m = avatar.moving;
+    const k = clamp(m.t, 0, 1);
+    const s = k * k * (3 - 2 * k);
+    x = lerp(m.from.x, m.to.x, s) * W;
+    y = lerp(m.from.y, m.to.y, s) * H;
+  } else {
+    const n = nodeById[avatar.node];
+    x = n.x * W; y = n.y * H;
+  }
+  return { x, y: y - 36 + Math.sin(t * 3) * 4 };
 }
 
 /* ================= HUD ================= */
@@ -720,9 +964,16 @@ function hpHud() {
   $('hptext').textContent = Math.max(0, Math.ceil(S.hp)) + ' / ' + S.maxhp;
 }
 function scoreHud() { $('score').textContent = S.score.toLocaleString(); }
-function floorHud() { $('floor').textContent = 'FLOOR ' + S.floor + (isBossFloor(S.floor) ? ' ☠' : ''); }
+function floorHud() {
+  $('floor').textContent = (S.stage ? S.stage.icon + ' ' : '') + floorLabel() + (isBossFloor(S.floor) ? ' ☠' : '');
+}
 function relicsHud() {
-  $('relics').textContent = S.relics.map(r => r.icon).join('');
+  const counts = {};
+  for (const r of S.relics) counts[r.id] = (counts[r.id] || 0) + 1;
+  $('relics').innerHTML = Object.entries(counts).map(([id, n]) => {
+    const r = RELICS.find(x => x.id === id);
+    return r.icon + (n > 1 ? `<sub>×${n}</sub>` : '');
+  }).join(' ');
 }
 function comboHud(popped) {
   const el = $('combo');
@@ -763,10 +1014,36 @@ function update(dt) {
   S.shake *= Math.exp(-dt * 7);
   S.flash *= Math.exp(-dt * 5);
   S.freezeT = Math.max(0, S.freezeT - dt);
+  S.missBoostT = Math.max(0, S.missBoostT - dt);
   S.glowT += dt;
 
   const wdt = dt * S.timeScale * (S.ffwd && S.phase === 'play' ? 3 : 1);
-  const enemySlow = S.freezeT > 0 ? 0.25 : 1;
+  // フリーズで減速、ミス直後は加速ペナルティ
+  const enemySlow = (S.freezeT > 0 ? 0.25 : 1) * (S.missBoostT > 0 ? 1.6 : 1);
+
+  if (S.phase === 'world') {
+    if (avatar.moving) {
+      const m = avatar.moving;
+      m.t += dt / m.dur;
+      if (m.t >= 1) {
+        avatar.node = m.to.id;
+        avatar.moving = null;
+        progress.node = avatar.node;
+        saveProgress();
+        updateMapInfo();
+        ring(m.to.x * W, m.to.y * H, nodeById[avatar.node].hue, 380, 2);
+      }
+    }
+    avatar.trailT -= dt;
+    if (avatar.trailT <= 0 && particles.length < 600) {
+      const p = avatarPos(performance.now() / 1000);
+      particles.push({
+        x: p.x + rand(-4, 4), y: p.y + 6, vx: rand(-15, 15), vy: rand(15, 45),
+        t: 0, life: 0.6, size: rand(1.5, 3), hue: 190, streak: false, drag: 2, grav: 0,
+      });
+      avatar.trailT = 0.05;
+    }
+  }
 
   if (S.phase === 'play') {
     S.playT += dt;
@@ -777,14 +1054,15 @@ function update(dt) {
         S.spawnT -= wdt;
         if (S.spawnT <= 0) {
           spawnEnemy();
-          S.spawnT = Math.max(0.45, 1.45 - S.floor * 0.08) * rand(0.8, 1.25);
+          if (S.stage.mods.burst && Math.random() < 0.4 && enemies.length < 7) spawnEnemy();
+          S.spawnT = Math.max(0.45, 1.45 - eff() * 0.08) * (S.stage.mods.spawn || 1) * rand(0.8, 1.25);
         }
       }
     } else if (S.boss) {
       // boss minions
       S.minionT -= wdt;
       if (S.minionT <= 0 && enemies.length < 6) {
-        spawnEnemy(Math.random() < 0.6 ? 1 : 2);
+        spawnEnemy(Math.random() < 0.6 ? 2 : 4);
         S.minionT = rand(2.2, 3.6);
       }
     }
@@ -811,7 +1089,7 @@ function update(dt) {
           enemies.push(e);
           floater(coreX(), coreY() - 90, '-35', '#ff5d7a', 30);
         } else {
-          const dmg = 8 + Math.floor(S.floor * 1.5);
+          const dmg = 8 + Math.floor(eff() * 1.5);
           hurtCore(dmg);
           floater(coreX(), coreY() - 90, '-' + dmg, '#ff5d7a', 24);
           burst(e.x, e.y, 0, 26, 0.8, false);
@@ -839,11 +1117,11 @@ function update(dt) {
 }
 
 /* ================= render ================= */
-function drawBackground(t) {
+function drawBackground(t, hueIn) {
   ctx.fillStyle = '#04050e';
   ctx.fillRect(0, 0, W, H);
 
-  const baseHue = (205 + S.floor * 22) % 360;
+  const baseHue = hueIn != null ? hueIn : (205 + S.floor * 22) % 360;
   ctx.globalCompositeOperation = 'screen';
   for (const b of blobs) {
     const bx = (b.x + Math.sin(t * 0.05 * b.sp + b.ph) * 0.08) * W;
@@ -971,33 +1249,43 @@ function drawEnemy(e, t) {
   ctx.globalCompositeOperation = 'source-over';
 
   // ---- word labels ----
-  const ty = e.y - e.r - 26;
-  ctx.textAlign = 'center';
-  // display word
-  ctx.font = `900 ${e.boss ? 30 : 19}px "Noto Sans JP", sans-serif`;
-  ctx.shadowColor = `hsla(${e.hue},95%,60%,.9)`;
-  ctx.shadowBlur = 12;
-  ctx.fillStyle = isTarget ? '#fff' : 'rgba(235,246,255,.92)';
-  ctx.fillText(e.word.d, e.x, ty);
-  ctx.shadowBlur = 0;
-
-  // romaji: typed part gold, rest white
+  const ty = e.y - e.r - 32;
+  // 文字幅を測り、長文でも画面からはみ出さないよう中心をクランプ
+  const dispFont = `900 ${e.boss ? 34 : 24}px "Noto Sans JP", sans-serif`;
+  const romaFont = `700 ${e.boss ? 23 : 18}px Orbitron, monospace`;
   const cand = e.cands[0];
   const typed = e.typed;
   const rest = cand.slice(typed.length);
-  ctx.font = `700 ${e.boss ? 20 : 15}px Orbitron, monospace`;
+  ctx.font = dispFont;
+  const dw = ctx.measureText(e.word.d).width;
+  ctx.font = romaFont;
   const wTyped = ctx.measureText(typed).width;
   const wRest = ctx.measureText(rest).width;
-  const x0 = e.x - (wTyped + wRest) / 2;
+  const labelW = Math.max(dw, wTyped + wRest);
+  const lx = clamp(e.x, labelW / 2 + 10, W - labelW / 2 - 10);
+
+  // display word
+  ctx.textAlign = 'center';
+  ctx.font = dispFont;
+  ctx.shadowColor = `hsla(${e.hue},95%,60%,.9)`;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = isTarget ? '#fff' : 'rgba(235,246,255,.92)';
+  ctx.fillText(e.word.d, lx, ty);
+  ctx.shadowBlur = 0;
+
+  // romaji: typed part gold, rest white
+  const ry = ty + (e.boss ? 30 : 25);
+  const x0 = lx - (wTyped + wRest) / 2;
+  ctx.font = romaFont;
   ctx.textAlign = 'left';
   if (typed) {
     ctx.fillStyle = 'rgba(255,213,74,.85)';
-    ctx.fillText(typed, x0, ty + (e.boss ? 26 : 20));
+    ctx.fillText(typed, x0, ry);
   }
   ctx.shadowColor = 'rgba(120,220,255,.8)';
   ctx.shadowBlur = isTarget ? 10 : 4;
   ctx.fillStyle = isTarget ? '#dffaff' : 'rgba(200,225,245,.75)';
-  ctx.fillText(rest, x0 + wTyped, ty + (e.boss ? 26 : 20));
+  ctx.fillText(rest, x0 + wTyped, ry);
   ctx.shadowBlur = 0;
   ctx.textAlign = 'center';
 }
@@ -1067,19 +1355,117 @@ function drawFx() {
   }
 }
 
+function drawWorld(t) {
+  drawBackground(t, nodeById[avatar.node].hue);
+
+  // heading
+  ctx.textAlign = 'center';
+  ctx.font = '900 30px Orbitron, monospace';
+  ctx.shadowColor = 'rgba(75,232,255,.8)';
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = '#eaf8ff';
+  ctx.fillText('WORLD MAP', W / 2, 64);
+  ctx.shadowBlur = 0;
+  ctx.font = '700 14px "Noto Sans JP", sans-serif';
+  ctx.fillStyle = 'rgba(232,246,255,.6)';
+  ctx.fillText('ステージをクリアして道をひらけ', W / 2, 90);
+
+  // edges
+  for (const [a, b] of MAPEDGES) {
+    const na = nodeById[a], nb = nodeById[b];
+    const open = isUnlocked(a) && isUnlocked(b);
+    ctx.strokeStyle = open ? 'rgba(120,220,255,.55)' : 'rgba(120,150,180,.15)';
+    ctx.lineWidth = open ? 2.5 : 1.5;
+    ctx.setLineDash([3, 11]);
+    ctx.lineDashOffset = open ? -t * 30 : 0;
+    ctx.beginPath();
+    ctx.moveTo(na.x * W, na.y * H);
+    ctx.lineTo(nb.x * W, nb.y * H);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // nodes
+  for (const n of MAPNODES) {
+    const x = n.x * W, y = n.y * H;
+    const unlocked = isUnlocked(n.id);
+    const cleared = progress.cleared.includes(n.id);
+    const here = avatar.node === n.id && !avatar.moving;
+    const pulse = here ? 1 + Math.sin(t * 4) * 0.08 : 1;
+
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 64 * pulse);
+    g.addColorStop(0, `hsla(${n.hue},85%,60%,${unlocked ? 0.4 : 0.07})`);
+    g.addColorStop(1, 'hsla(0,0%,0%,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 70, y - 70, 140, 140);
+    ctx.globalCompositeOperation = 'source-over';
+
+    ctx.fillStyle = unlocked ? 'rgba(10,18,38,.92)' : 'rgba(12,16,26,.85)';
+    ctx.strokeStyle = unlocked ? `hsla(${n.hue},85%,65%,.95)` : 'rgba(130,150,175,.35)';
+    ctx.lineWidth = here ? 3.5 : 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 30 * pulse, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '26px "Noto Sans JP", sans-serif';
+    ctx.globalAlpha = unlocked ? 1 : 0.35;
+    ctx.fillText(n.icon, x, y + 9);
+    ctx.globalAlpha = 1;
+    if (!unlocked) { ctx.font = '14px sans-serif'; ctx.fillText('🔒', x + 22, y - 18); }
+    if (cleared) {
+      ctx.font = '900 16px Orbitron, monospace';
+      ctx.fillStyle = '#ffd54a';
+      ctx.shadowColor = 'rgba(255,213,74,.9)';
+      ctx.shadowBlur = 8;
+      ctx.fillText('★', x - 26, y - 18);
+      ctx.shadowBlur = 0;
+    }
+    ctx.font = '700 14px "Noto Sans JP", sans-serif';
+    ctx.fillStyle = unlocked ? 'rgba(235,246,255,.92)' : 'rgba(160,175,195,.5)';
+    ctx.fillText(n.name, x, y + 56);
+  }
+
+  // avatar (comet)
+  const p = avatarPos(t);
+  ctx.globalCompositeOperation = 'lighter';
+  const ag = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 26);
+  ag.addColorStop(0, 'rgba(160,240,255,.9)');
+  ag.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ag;
+  ctx.fillRect(p.x - 28, p.y - 28, 56, 56);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(t * 1.4);
+  ctx.fillStyle = '#dffaff';
+  ctx.strokeStyle = 'rgba(75,232,255,.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -9); ctx.lineTo(7, 0); ctx.lineTo(0, 9); ctx.lineTo(-7, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function render(t) {
   ctx.save();
   if (S.shake > 0.3) {
     ctx.translate(rand(-S.shake, S.shake), rand(-S.shake, S.shake));
   }
-  drawBackground(t);
-  if (S.phase !== 'title') {
-    drawCore(t);
-    // draw far enemies first
-    const sorted = [...enemies].sort((a, b) => a.y - b.y);
-    for (const e of sorted) drawEnemy(e, t);
+  if (S.phase === 'world') {
+    drawWorld(t);
     drawFx();
   } else {
+    drawBackground(t, S.stage ? (S.stage.hue + (S.floor - 1) * 14) % 360 : undefined);
+    if (S.phase !== 'title') {
+      drawCore(t);
+      // draw far enemies first
+      const sorted = [...enemies].sort((a, b) => a.y - b.y);
+      for (const e of sorted) drawEnemy(e, t);
+    }
     drawFx();
   }
   ctx.restore();
@@ -1123,7 +1509,19 @@ window.addEventListener('pointerdown', e => {
   audioInit();
   if (AC && AC.state === 'suspended') AC.resume();
   if (e.target.closest('#mute') || e.target.closest('.relic-card')) return;
-  if (S.phase === 'title') startRun();
-  else if (S.phase === 'over' && !$('over-screen').classList.contains('hidden')) startRun();
+  if (S.phase === 'title') goWorld();
+  else if ((S.phase === 'over' || S.phase === 'won') && !$('over-screen').classList.contains('hidden')) goWorld();
+  else if (S.phase === 'world') {
+    for (const n of MAPNODES) {
+      if (Math.hypot(n.x * W - e.clientX, n.y * H - e.clientY) < 42) {
+        if (n.id === avatar.node && !avatar.moving) enterStage();
+        else if (!avatar.moving && neighborsOf(avatar.node).includes(n.id) && isUnlocked(n.id)) {
+          avatar.moving = { from: nodeById[avatar.node], to: n, t: 0, dur: 0.4 };
+          sfx.type();
+        }
+        break;
+      }
+    }
+  }
 });
 requestAnimationFrame(loop);

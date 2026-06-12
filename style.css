@@ -196,10 +196,18 @@ html, body {
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(50px) scale(.85); }
 }
-.relic-card:hover {
+.relic-card:hover, .relic-card.sel {
   transform: translateY(-10px) scale(1.05);
   border-color: var(--gold);
   box-shadow: 0 14px 44px rgba(255,213,74,.25), 0 0 30px rgba(255,213,74,.3), inset 0 0 30px rgba(255,213,74,.06);
+}
+.relic-owned {
+  margin-top: 10px; font-family: Orbitron, monospace; font-size: 11px;
+  letter-spacing: .15em; color: var(--gold); opacity: .85;
+}
+#relics sub {
+  font-family: Orbitron, monospace; font-size: 11px; color: var(--gold);
+  vertical-align: baseline;
 }
 .relic-icon { font-size: 46px; filter: drop-shadow(0 0 12px rgba(255,213,74,.6)); }
 .relic-name { margin-top: 14px; font-size: 18px; font-weight: 900; color: #fff; letter-spacing: .05em; }
@@ -216,6 +224,35 @@ html, body {
   text-shadow: 0 0 10px rgba(75,232,255,.7); margin-left: 14px;
 }
 #over-stats .newbest { color: var(--gold); text-shadow: 0 0 14px rgba(255,213,74,.9); }
+
+#over-title.win {
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(255,213,74,.9), 0 0 90px rgba(255,213,74,.45);
+}
+
+/* ===== world map info ===== */
+#map-info {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+  z-index: 30; display: flex; gap: 18px; align-items: center;
+  padding: 14px 24px; border-radius: 14px; min-width: 420px; max-width: 80vw;
+  background: rgba(10,16,36,.78); border: 1px solid rgba(75,232,255,.35);
+  box-shadow: 0 0 26px rgba(75,232,255,.18), 0 10px 30px rgba(0,0,0,.5);
+  pointer-events: none;
+}
+#mi-icon { font-size: 36px; filter: drop-shadow(0 0 10px rgba(75,232,255,.5)); }
+#mi-body { flex: 1; }
+#mi-name { font-weight: 900; font-size: 17px; }
+#mi-name .locked { color: rgba(232,246,255,.5); }
+#mi-name .star { color: var(--gold); text-shadow: 0 0 8px rgba(255,213,74,.8); }
+#mi-desc { margin-top: 3px; font-size: 12.5px; line-height: 1.5; color: rgba(232,246,255,.75); }
+#mi-best {
+  margin-top: 3px; font-family: Orbitron, monospace; font-size: 11px;
+  letter-spacing: .1em; color: var(--gold);
+}
+#mi-action {
+  font-size: 12px; line-height: 1.8; text-align: right; white-space: nowrap;
+  color: var(--cyan); text-shadow: 0 0 8px rgba(75,232,255,.5);
+}
 
 #pause-screen h2 {
   font-family: Orbitron, monospace; font-weight: 900; font-size: 52px; letter-spacing: .3em;

@@ -50,9 +50,10 @@
   <div class="howto">
     <div>⌨️ 表示されたローマ字をタイプして敵を撃破</div>
     <div>🔥 連続ヒットでコンボ &amp; スコア倍率アップ</div>
-    <div>💥 ミスタイプでコンボが途切れる</div>
-    <div>🗝️ フロアクリアでレリックを1つ選んで強化</div>
-    <div>⏩ スペース長押しで早送り（×3）</div>
+    <div>💥 ミスするとコンボが途切れ、敵が一瞬加速する</div>
+    <div>🗝️ フロアクリアでレリックを選んで強化（矢印＋ENTER）</div>
+    <div>🗺️ ワールドマップを矢印キーで移動、ENTERで出撃</div>
+    <div>⏩ スペース長押しで早送り（×3）— 獲得スコア1.5倍</div>
     <div>👑 5フロアごとにボス出現</div>
   </div>
   <div class="press blink">— PRESS ANY KEY TO START —</div>
@@ -69,7 +70,18 @@
 <div id="over-screen" class="screen hidden">
   <h2 id="over-title">GAME OVER</h2>
   <div id="over-stats"></div>
-  <div class="press blink">— PRESS ENTER TO RETRY —</div>
+  <div class="press blink">— PRESS ENTER : ワールドマップへ —</div>
+</div>
+
+<!-- World map info panel -->
+<div id="map-info" class="hidden">
+  <div id="mi-icon"></div>
+  <div id="mi-body">
+    <div id="mi-name"></div>
+    <div id="mi-desc"></div>
+    <div id="mi-best"></div>
+  </div>
+  <div id="mi-action"></div>
 </div>
 
 <!-- Pause -->
