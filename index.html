@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TYPE:ROGUE — ローグライク・タイピング</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hud-left">
+    <div id="floor">FLOOR 1</div>
+    <div id="hpbar"><div id="hpfill"></div><span id="hptext">100 / 100</span></div>
+    <div id="relics"></div>
+  </div>
+  <div id="hud-right">
+    <div id="score-label">SCORE</div>
+    <div id="score">0</div>
+    <div id="combo-wrap">
+      <div id="combo">0</div>
+      <div id="combo-label">COMBO <span id="mult">×1.0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Boss bar -->
+<div id="bossbar-wrap" class="hidden">
+  <div id="bossname">⚠ GUARDIAN ⚠</div>
+  <div id="bossbar"><div id="bossfill"></div></div>
+</div>
+
+<!-- Center banner -->
+<div id="banner" class="hidden">
+  <div id="banner-text"></div>
+  <div id="banner-sub"></div>
+</div>
+
+<!-- Title screen -->
+<div id="title-screen" class="screen">
+  <div class="title-deco">▰▰▰ ROGUELIKE TYPING ▰▰▰</div>
+  <h1 id="game-title">TYPE:ROGUE</h1>
+  <div class="title-jp">タイプ：ローグ</div>
+  <div class="title-best" id="title-best"></div>
+  <div class="howto">
+    <div>⌨️ 表示されたローマ字をタイプして敵を撃破</div>
+    <div>🔥 連続ヒットでコンボ &amp; スコア倍率アップ</div>
+    <div>💥 ミスタイプでコンボが途切れる</div>
+    <div>🗝️ フロアクリアでレリックを1つ選んで強化</div>
+    <div>👑 5フロアごとにボス出現</div>
+  </div>
+  <div class="press blink">— PRESS ANY KEY TO START —</div>
+</div>
+
+<!-- Relic choice -->
+<div id="relic-screen" class="screen hidden">
+  <div class="relic-head">FLOOR CLEAR</div>
+  <div class="relic-sub">レリックを1つ選択</div>
+  <div id="relic-cards"></div>
+</div>
+
+<!-- Game over -->
+<div id="over-screen" class="screen hidden">
+  <h2 id="over-title">GAME OVER</h2>
+  <div id="over-stats"></div>
+  <div class="press blink">— PRESS ENTER TO RETRY —</div>
+</div>
+
+<!-- Pause -->
+<div id="pause-screen" class="screen hidden">
+  <h2>PAUSE</h2>
+  <div class="press">ESC で再開</div>
+</div>
+
+<button id="mute" title="サウンド切替">🔊</button>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<script src="game.js"></script>
+</body>
+</html>
